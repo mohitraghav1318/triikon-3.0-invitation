@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import ThreeBackground from '../components/ThreeBackground';
-import { getJuryMessage, addJuryResponse } from '../utils/storage';
+import {
+  addJuryResponse,
+  getJuryMessage,
+  subscribeToInvitationMessages,
+} from '../utils/storage';
 
 /**
  * Jury Invitation Page Component
@@ -19,17 +23,48 @@ export default function JuryPage() {
   // State for submission feedback
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load invitation message on component mount
   useEffect(() => {
-    setMessage(getJuryMessage());
+    let isMounted = true;
+
+    getJuryMessage()
+      .then((storedMessage) => {
+        if (isMounted) {
+          setMessage(storedMessage);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setError('Unable to load the invitation message right now.');
+        }
+      });
+
+    const unsubscribe = subscribeToInvitationMessages(
+      (messages) => {
+        if (isMounted) {
+          setMessage(messages.juryMessage);
+        }
+      },
+      () => {
+        if (isMounted) {
+          setError('Unable to load the invitation message right now.');
+        }
+      },
+    );
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   /**
    * Handle form submission
    * Validates inputs and saves response to storage
    */
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Reset error state
@@ -58,25 +93,34 @@ export default function JuryPage() {
       return;
     }
 
-    // Save response
-    addJuryResponse({
-      name: name.trim(),
-      email: email.trim(),
-      status,
-    });
+    setIsSubmitting(true);
 
-    // Show success message
-    setSubmitted(true);
+    try {
+      await addJuryResponse({
+        name: name.trim(),
+        email: email.trim(),
+        status,
+      });
 
-    // Reset form
-    setName('');
-    setEmail('');
-    setStatus('');
+      // Show success message
+      setSubmitted(true);
 
-    // Hide success message after 5 seconds
-    setTimeout(() => {
-      setSubmitted(false);
-    }, 5000);
+      // Reset form
+      setName('');
+      setEmail('');
+      setStatus('');
+
+      // Hide success message after 5 seconds
+      setTimeout(() => {
+        setSubmitted(false);
+      }, 5000);
+    } catch {
+      setError(
+        'Unable to save your response right now. Please check Firebase setup and try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -182,7 +226,7 @@ export default function JuryPage() {
             {/* Submit Button */}
             <div className="text-center mt-8">
               <button type="submit" className="btn btn-primary">
-                Submit Response
+                {isSubmitting ? 'Submitting...' : 'Submit Response'}
               </button>
             </div>
           </form>

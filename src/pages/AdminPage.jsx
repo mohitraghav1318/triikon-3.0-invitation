@@ -1,14 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import ThreeBackground from '../components/ThreeBackground';
 import {
-  getJuryMessage,
-  setJuryMessage,
-  getMentorMessage,
-  setMentorMessage,
-  getJuryResponses,
-  getMentorResponses,
   clearAllResponses,
+  setInvitationMessages,
+  subscribeToInvitationMessages,
+  subscribeToResponses,
 } from '../utils/storage';
+import {
+  firebaseBackend,
+  firebaseSetupMessage,
+  isFirebaseConfigured,
+} from '../utils/firebase';
 
 /**
  * Admin Page Component
@@ -19,6 +21,20 @@ import {
  * No navigation buttons - accessed directly via URL
  */
 export default function AdminPage() {
+  const getFirebaseErrorMessage = (action, firebaseError) => {
+    const errorCode = firebaseError?.code || '';
+
+    if (errorCode.includes('permission-denied')) {
+      return `Unable to ${action}. Your Firebase ${firebaseBackend} rules are blocking this request.`;
+    }
+
+    if (errorCode.includes('failed-precondition')) {
+      return `Unable to ${action}. The selected Firebase database is not enabled for this project yet.`;
+    }
+
+    return `Unable to ${action}. Check your Firebase setup and ${firebaseBackend} rules.`;
+  };
+
   // State for messages
   const [juryMsg, setJuryMsg] = useState('');
   const [mentorMsg, setMentorMsg] = useState('');
@@ -32,45 +48,82 @@ export default function AdminPage() {
 
   // State for save feedback
   const [saveStatus, setSaveStatus] = useState('');
+  const [error, setError] = useState('');
+  const [isSavingMessages, setIsSavingMessages] = useState(false);
+  const [isClearingResponses, setIsClearingResponses] = useState(false);
 
   /**
-   * Load all data from storage
+   * Subscribe to Firestore-backed data
    */
-  const loadData = useCallback(() => {
-    setJuryMsg(getJuryMessage());
-    setMentorMsg(getMentorMessage());
-    setJuryResponses(getJuryResponses());
-    setMentorResponses(getMentorResponses());
-  }, []);
-
-  // Load data on component mount
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    const unsubscribeMessages = subscribeToInvitationMessages(
+      (messages) => {
+        setJuryMsg(messages.juryMessage);
+        setMentorMsg(messages.mentorMessage);
+      },
+      (firebaseError) => {
+        setError(getFirebaseErrorMessage('load invitation messages', firebaseError));
+      },
+    );
+
+    const unsubscribeResponses = subscribeToResponses(
+      ({ juryResponses: nextJuryResponses, mentorResponses: nextMentorResponses }) => {
+        setJuryResponses(nextJuryResponses);
+        setMentorResponses(nextMentorResponses);
+      },
+      (firebaseError) => {
+        setError(getFirebaseErrorMessage('load responses', firebaseError));
+      },
+    );
+
+    return () => {
+      unsubscribeMessages();
+      unsubscribeResponses();
+    };
+  }, []);
 
   /**
    * Save messages to storage
    */
-  const handleSaveMessages = () => {
-    setJuryMessage(juryMsg);
-    setMentorMessage(mentorMsg);
-    setSaveStatus('Messages saved successfully!');
-    setTimeout(() => setSaveStatus(''), 3000);
+  const handleSaveMessages = async () => {
+    setError('');
+    setIsSavingMessages(true);
+
+    try {
+      await setInvitationMessages({
+        juryMessage: juryMsg,
+        mentorMessage: mentorMsg,
+      });
+      setSaveStatus('Messages saved successfully!');
+      setTimeout(() => setSaveStatus(''), 3000);
+    } catch (firebaseError) {
+      setError(getFirebaseErrorMessage('save messages', firebaseError));
+    } finally {
+      setIsSavingMessages(false);
+    }
   };
 
   /**
    * Clear all responses (for testing/reset)
    */
-  const handleClearResponses = () => {
+  const handleClearResponses = async () => {
     if (
       window.confirm(
         'Are you sure you want to clear all responses? This cannot be undone.',
       )
     ) {
-      clearAllResponses();
-      loadData();
-      setSaveStatus('All responses cleared!');
-      setTimeout(() => setSaveStatus(''), 3000);
+      setError('');
+      setIsClearingResponses(true);
+
+      try {
+        await clearAllResponses();
+        setSaveStatus('All responses cleared!');
+        setTimeout(() => setSaveStatus(''), 3000);
+      } catch (firebaseError) {
+        setError(getFirebaseErrorMessage('clear responses', firebaseError));
+      } finally {
+        setIsClearingResponses(false);
+      }
     }
   };
 
@@ -78,6 +131,10 @@ export default function AdminPage() {
    * Format timestamp to readable date
    */
   const formatDate = (timestamp) => {
+    if (!timestamp) {
+      return '-';
+    }
+
     return new Date(timestamp).toLocaleString('en-IN', {
       dateStyle: 'medium',
       timeStyle: 'short',
@@ -120,6 +177,21 @@ export default function AdminPage() {
           </div>
         )}
 
+        {!isFirebaseConfigured && (
+          <div className="alert alert-error max-w-4xl mx-auto mb-6">
+            <p className="text-center font-semibold">
+              {firebaseSetupMessage} The app is currently falling back to this
+              browser&apos;s local storage only.
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="alert alert-error max-w-4xl mx-auto mb-6">
+            <p className="text-center font-semibold">{error}</p>
+          </div>
+        )}
+
         {/* Messages Tab */}
         {activeTab === 'messages' && (
           <div className="max-w-5xl mx-auto space-y-6">
@@ -156,7 +228,7 @@ export default function AdminPage() {
             {/* Save Button */}
             <div className="text-center">
               <button onClick={handleSaveMessages} className="btn btn-primary">
-                Save Messages
+                {isSavingMessages ? 'Saving...' : 'Save Messages'}
               </button>
             </div>
           </div>
@@ -212,7 +284,9 @@ export default function AdminPage() {
                   onClick={handleClearResponses}
                   className="btn btn-secondary text-sm"
                 >
-                  Clear All Responses
+                  {isClearingResponses
+                    ? 'Clearing...'
+                    : 'Clear All Responses'}
                 </button>
               </div>
               {juryResponses.length === 0 ? (
