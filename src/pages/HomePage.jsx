@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ThreeBackground from '../components/ThreeBackground';
 import { submitTeamResponse } from '../utils/storage';
 
 // We keep the target start time in one place so it is easy to update later.
-const HACKATHON_START_TIME = new Date('2026-04-04T10:00:00+05:30');
+const HACKATHON_START_TIME = new Date('2026-04-04T09:00:00+05:30');
 const SUBMIT_COOLDOWN_SECONDS = 10;
 
 // This helper converts milliseconds into a readable countdown string.
@@ -38,12 +38,12 @@ export default function HomePage() {
   const [remainingMs, setRemainingMs] = useState(0);
 
   // This computes the user-facing date string once.
-  const startTimeText = useMemo(() => {
-    return HACKATHON_START_TIME.toLocaleString('en-IN', {
-      dateStyle: 'long',
-      timeStyle: 'short',
-    });
-  }, []);
+  // const startTimeText = useMemo(() => {
+  //   return HACKATHON_START_TIME.toLocaleString('en-IN', {
+  //     dateStyle: 'long',
+  //     timeStyle: 'short',
+  //   });
+  // }, []);
 
   useEffect(() => {
     if (!submitted) {
@@ -257,11 +257,9 @@ export default function HomePage() {
               {formatCountdown(remainingMs)}
             </h2>
             <p className="countdown-screen-meta">
-              Hackathon starting time is 10:00 AM April 4, 2026.
+              Hackathon starting time is 9:00 AM April 4, 2026.
             </p>
-            <p className="countdown-screen-meta-small">
-              Local time: {startTimeText}
-            </p>
+            <p className="countdown-screen-meta-small"></p>
           </div>
         )}
       </div>
