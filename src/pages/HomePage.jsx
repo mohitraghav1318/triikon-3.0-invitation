@@ -4,6 +4,7 @@ import { submitTeamResponse } from '../utils/storage';
 
 // We keep the target start time in one place so it is easy to update later.
 const HACKATHON_START_TIME = new Date('2026-04-04T10:00:00+05:30');
+const SUBMIT_COOLDOWN_SECONDS = 10;
 
 // This helper converts milliseconds into a readable countdown string.
 const formatCountdown = (remainingMs) => {
@@ -31,6 +32,7 @@ export default function HomePage() {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitCooldownSeconds, setSubmitCooldownSeconds] = useState(0);
 
   // Countdown state starts only after successful submit.
   const [remainingMs, setRemainingMs] = useState(0);
@@ -64,6 +66,23 @@ export default function HomePage() {
     };
   }, [submitted]);
 
+  useEffect(() => {
+    if (submitCooldownSeconds <= 0) {
+      return undefined;
+    }
+
+    // Keep the submit button on a short cooldown to prevent rapid repeat clicks.
+    const timeoutId = window.setTimeout(() => {
+      setSubmitCooldownSeconds((currentSeconds) =>
+        Math.max(currentSeconds - 1, 0),
+      );
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [submitCooldownSeconds]);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
@@ -89,11 +108,19 @@ export default function HomePage() {
       return;
     }
 
+    if (submitCooldownSeconds > 0) {
+      setError(
+        `Please wait ${submitCooldownSeconds} second(s) before submitting again.`,
+      );
+      return;
+    }
+
     setIsSubmitting(true);
+    setSubmitCooldownSeconds(SUBMIT_COOLDOWN_SECONDS);
 
     try {
-      // This guarded submit blocks repeat team IDs permanently and applies
-      // a 1-hour IP/client cooldown after a successful submit.
+      // Team ID and team name are allowed to repeat so every member can submit.
+      // The button cooldown is only here to slow accidental rapid re-clicks.
       await submitTeamResponse({
         teamId: teamId.trim(),
         teamName: teamName.trim(),
@@ -125,7 +152,7 @@ export default function HomePage() {
 
       <div className="relative z-10 container mx-auto px-4 py-8 max-w-5xl">
         <div className="page-header">
-          <h1>Hackathon Check-In</h1>
+          <h1>Trikon 3.0 Starts-in</h1>
           <p>Share your team details and attendance status</p>
         </div>
 
@@ -135,8 +162,8 @@ export default function HomePage() {
               <span className="home-chip">Home Page Form</span>
               <h2>Team Confirmation Form</h2>
               <p>
-                Fill your team details below and submit once. Team ID is
-                permanently locked after first response.
+                Fill your team details below. Members from the same team can
+                submit with the same team ID and team name.
               </p>
             </div>
 
@@ -207,8 +234,16 @@ export default function HomePage() {
               </div>
 
               <div className="text-center mt-8">
-                <button type="submit" className="btn btn-primary">
-                  {isSubmitting ? 'Submitting...' : 'Submit Form'}
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isSubmitting || submitCooldownSeconds > 0}
+                >
+                  {isSubmitting
+                    ? 'Submitting...'
+                    : submitCooldownSeconds > 0
+                      ? `Please wait ${submitCooldownSeconds}s`
+                      : 'Submit Form'}
                 </button>
               </div>
             </form>
