@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import ThreeBackground from '../components/ThreeBackground';
 import {
-  clearAllResponses,
+  // clearAllResponses,
   setInvitationMessages,
   subscribeToInvitationMessages,
   subscribeToResponses,
@@ -50,7 +50,7 @@ export default function AdminPage() {
   const [saveStatus, setSaveStatus] = useState('');
   const [error, setError] = useState('');
   const [isSavingMessages, setIsSavingMessages] = useState(false);
-  const [isClearingResponses, setIsClearingResponses] = useState(false);
+  // const [isClearingResponses, setIsClearingResponses] = useState(false);
 
   /**
    * Subscribe to Firestore-backed data
@@ -62,12 +62,17 @@ export default function AdminPage() {
         setMentorMsg(messages.mentorMessage);
       },
       (firebaseError) => {
-        setError(getFirebaseErrorMessage('load invitation messages', firebaseError));
+        setError(
+          getFirebaseErrorMessage('load invitation messages', firebaseError),
+        );
       },
     );
 
     const unsubscribeResponses = subscribeToResponses(
-      ({ juryResponses: nextJuryResponses, mentorResponses: nextMentorResponses }) => {
+      ({
+        juryResponses: nextJuryResponses,
+        mentorResponses: nextMentorResponses,
+      }) => {
         setJuryResponses(nextJuryResponses);
         setMentorResponses(nextMentorResponses);
       },
@@ -106,26 +111,26 @@ export default function AdminPage() {
   /**
    * Clear all responses (for testing/reset)
    */
-  const handleClearResponses = async () => {
-    if (
-      window.confirm(
-        'Are you sure you want to clear all responses? This cannot be undone.',
-      )
-    ) {
-      setError('');
-      setIsClearingResponses(true);
+  // const handleClearResponses = async () => {
+  //   if (
+  //     window.confirm(
+  //       'Are you sure you want to clear all responses? This cannot be undone.',
+  //     )
+  //   ) {
+  //     setError('');
+  //     setIsClearingResponses(true);
 
-      try {
-        await clearAllResponses();
-        setSaveStatus('All responses cleared!');
-        setTimeout(() => setSaveStatus(''), 3000);
-      } catch (firebaseError) {
-        setError(getFirebaseErrorMessage('clear responses', firebaseError));
-      } finally {
-        setIsClearingResponses(false);
-      }
-    }
-  };
+  //     try {
+  //       await clearAllResponses();
+  //       setSaveStatus('All responses cleared!');
+  //       setTimeout(() => setSaveStatus(''), 3000);
+  //     } catch (firebaseError) {
+  //       setError(getFirebaseErrorMessage('clear responses', firebaseError));
+  //     } finally {
+  //       setIsClearingResponses(false);
+  //     }
+  //   }
+  // };
 
   /**
    * Format timestamp to readable date
@@ -280,14 +285,14 @@ export default function AdminPage() {
                 <h2 className="text-3xl font-bold text-primary">
                   Jury Responses
                 </h2>
-                <button
+                {/* <button
                   onClick={handleClearResponses}
                   className="btn btn-secondary text-sm"
                 >
                   {isClearingResponses
                     ? 'Clearing...'
                     : 'Clear All Responses'}
-                </button>
+                </button> */}
               </div>
               {juryResponses.length === 0 ? (
                 <p className="text-light text-opacity-50 text-center py-12 text-lg">
