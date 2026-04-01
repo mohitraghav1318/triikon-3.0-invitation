@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import ThreeBackground from '../components/ThreeBackground';
 import {
   // clearAllResponses,
@@ -42,9 +42,11 @@ export default function AdminPage() {
   // State for responses
   const [juryResponses, setJuryResponses] = useState([]);
   const [mentorResponses, setMentorResponses] = useState([]);
+  const [teamResponses, setTeamResponses] = useState([]);
 
   // State for active tab
   const [activeTab, setActiveTab] = useState('messages'); // 'messages' or 'responses'
+  const [activeResponseView, setActiveResponseView] = useState('jury');
 
   // State for save feedback
   const [saveStatus, setSaveStatus] = useState('');
@@ -72,9 +74,11 @@ export default function AdminPage() {
       ({
         juryResponses: nextJuryResponses,
         mentorResponses: nextMentorResponses,
+        teamResponses: nextTeamResponses,
       }) => {
         setJuryResponses(nextJuryResponses);
         setMentorResponses(nextMentorResponses);
+        setTeamResponses(nextTeamResponses);
       },
       (firebaseError) => {
         setError(getFirebaseErrorMessage('load responses', firebaseError));
@@ -145,6 +149,23 @@ export default function AdminPage() {
       timeStyle: 'short',
     });
   };
+
+  const groupedTeamResponses = useMemo(() => {
+    // Group team responses by normalized Team ID so same-team records stay together.
+    return teamResponses.reduce((groups, response) => {
+      const normalizedTeamId =
+        response.teamIdNormalized ||
+        response.teamId?.trim().toLowerCase() ||
+        'unknown';
+
+      if (!groups[normalizedTeamId]) {
+        groups[normalizedTeamId] = [];
+      }
+
+      groups[normalizedTeamId].push(response);
+      return groups;
+    }, {});
+  }, [teamResponses]);
 
   return (
     <div className="page-container">
@@ -277,95 +298,203 @@ export default function AdminPage() {
                   {mentorResponses.filter((r) => r.status === 'maybe').length}
                 </div>
               </div>
+              <div className="stat-card">
+                <h3>Participants</h3>
+                <div className="stat-number">{teamResponses.length}</div>
+                <div className="stat-details">
+                  Coming:{' '}
+                  {
+                    teamResponses.filter((r) => r.attendance === 'coming')
+                      .length
+                  }{' '}
+                  | Not Coming:{' '}
+                  {
+                    teamResponses.filter((r) => r.attendance === 'not-coming')
+                      .length
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div className="admin-tabs">
+              <button
+                onClick={() => setActiveResponseView('jury')}
+                className={activeResponseView === 'jury' ? 'active' : ''}
+              >
+                Jury
+              </button>
+              <button
+                onClick={() => setActiveResponseView('mentor')}
+                className={activeResponseView === 'mentor' ? 'active' : ''}
+              >
+                Mentor
+              </button>
+              <button
+                onClick={() => setActiveResponseView('participants')}
+                className={
+                  activeResponseView === 'participants' ? 'active' : ''
+                }
+              >
+                Participants
+              </button>
             </div>
 
             {/* Jury Responses Table */}
-            <div className="glass-card">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-3xl font-bold text-primary">
-                  Jury Responses
-                </h2>
-                {/* <button
-                  onClick={handleClearResponses}
-                  className="btn btn-secondary text-sm"
-                >
-                  {isClearingResponses
-                    ? 'Clearing...'
-                    : 'Clear All Responses'}
-                </button> */}
+            {activeResponseView === 'jury' && (
+              <div className="glass-card">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-3xl font-bold text-primary">
+                    Jury Responses
+                  </h2>
+                  {/* <button
+                    onClick={handleClearResponses}
+                    className="btn btn-secondary text-sm"
+                  >
+                    {isClearingResponses
+                      ? 'Clearing...'
+                      : 'Clear All Responses'}
+                  </button> */}
+                </div>
+                {juryResponses.length === 0 ? (
+                  <p className="text-light text-opacity-50 text-center py-12 text-lg">
+                    No responses yet
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="response-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Email</th>
+                          <th>Status</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {juryResponses.map((response) => (
+                          <tr key={response.id}>
+                            <td>{response.name}</td>
+                            <td>{response.email}</td>
+                            <td>
+                              <span
+                                className={`status-badge ${response.status}`}
+                              >
+                                {response.status}
+                              </span>
+                            </td>
+                            <td>{formatDate(response.timestamp)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-              {juryResponses.length === 0 ? (
-                <p className="text-light text-opacity-50 text-center py-12 text-lg">
-                  No responses yet
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="response-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {juryResponses.map((response) => (
-                        <tr key={response.id}>
-                          <td>{response.name}</td>
-                          <td>{response.email}</td>
-                          <td>
-                            <span className={`status-badge ${response.status}`}>
-                              {response.status}
-                            </span>
-                          </td>
-                          <td>{formatDate(response.timestamp)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            )}
 
-            {/* Mentor Responses Table */}
-            <div className="glass-card">
-              <h2 className="text-3xl font-bold text-primary mb-6">
-                Mentor Responses
-              </h2>
-              {mentorResponses.length === 0 ? (
-                <p className="text-light text-opacity-50 text-center py-12 text-lg">
-                  No responses yet
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="response-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mentorResponses.map((response) => (
-                        <tr key={response.id}>
-                          <td>{response.name}</td>
-                          <td>{response.email}</td>
-                          <td>
-                            <span className={`status-badge ${response.status}`}>
-                              {response.status}
-                            </span>
-                          </td>
-                          <td>{formatDate(response.timestamp)}</td>
+            {activeResponseView === 'mentor' && (
+              <div className="glass-card">
+                <h2 className="text-3xl font-bold text-primary mb-6">
+                  Mentor Responses
+                </h2>
+                {mentorResponses.length === 0 ? (
+                  <p className="text-light text-opacity-50 text-center py-12 text-lg">
+                    No responses yet
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="response-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Email</th>
+                          <th>Status</th>
+                          <th>Date</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                      </thead>
+                      <tbody>
+                        {mentorResponses.map((response) => (
+                          <tr key={response.id}>
+                            <td>{response.name}</td>
+                            <td>{response.email}</td>
+                            <td>
+                              <span
+                                className={`status-badge ${response.status}`}
+                              >
+                                {response.status}
+                              </span>
+                            </td>
+                            <td>{formatDate(response.timestamp)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeResponseView === 'participants' && (
+              <div className="glass-card">
+                <h2 className="text-3xl font-bold text-primary mb-6">
+                  Participant Responses
+                </h2>
+
+                {teamResponses.length === 0 ? (
+                  <p className="text-light text-opacity-50 text-center py-12 text-lg">
+                    No participant responses yet
+                  </p>
+                ) : (
+                  Object.entries(groupedTeamResponses).map(
+                    ([normalizedTeamId, responses]) => {
+                      const displayTeamId =
+                        responses[0]?.teamId || normalizedTeamId;
+                      const displayTeamName = responses[0]?.teamName || '-';
+
+                      return (
+                        <div key={normalizedTeamId} className="mb-8 last:mb-0">
+                          <h3 className="text-2xl font-bold text-primary mb-3">
+                            Team ID: {displayTeamId}
+                          </h3>
+                          <p className="text-light text-opacity-80 mb-4">
+                            Team Name: {displayTeamName}
+                          </p>
+
+                          <div className="overflow-x-auto">
+                            <table className="response-table">
+                              <thead>
+                                <tr>
+                                  <th>Member Name</th>
+                                  <th>Attendance</th>
+                                  <th>Date</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {responses.map((response) => (
+                                  <tr key={response.id}>
+                                    <td>
+                                      {response.memberName || response.name}
+                                    </td>
+                                    <td>
+                                      <span
+                                        className={`status-badge ${response.status || (response.attendance === 'coming' ? 'attending' : 'not-attending')}`}
+                                      >
+                                        {response.attendance || response.status}
+                                      </span>
+                                    </td>
+                                    <td>{formatDate(response.timestamp)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    },
+                  )
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

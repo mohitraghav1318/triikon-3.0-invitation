@@ -220,6 +220,116 @@ body {
   }
 }
 
+/* Home page specific styles */
+.home-form-card {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.home-form-intro {
+  text-align: center;
+  margin-bottom: 2rem;
+
+  h2 {
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+    color: $light-color;
+    font-weight: 800;
+    margin-top: 0.8rem;
+    margin-bottom: 0.8rem;
+  }
+
+  p {
+    color: rgba($light-color, 0.75);
+    line-height: 1.7;
+    max-width: 580px;
+    margin: 0 auto;
+  }
+}
+
+.home-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 999px;
+  color: $dark-color;
+  background: linear-gradient(
+    135deg,
+    $primary-color 0%,
+    lighten($primary-color, 16%) 100%
+  );
+}
+
+.attendance-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+
+  .btn {
+    width: 100%;
+    padding: 1rem 1.2rem;
+  }
+}
+
+.countdown-panel {
+  p {
+    font-size: 1.02rem;
+  }
+
+  strong {
+    color: $light-color;
+    font-size: 1.15rem;
+    letter-spacing: 0.03em;
+  }
+}
+
+.countdown-screen {
+  max-width: 960px;
+  margin: 2.5rem auto 0;
+  min-height: min(72vh, 760px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-width: 2px;
+}
+
+.countdown-screen-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: rgba($light-color, 0.75);
+  margin-bottom: 1rem;
+}
+
+.countdown-screen-value {
+  font-size: clamp(2.6rem, 8vw, 7rem);
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: $light-color;
+  text-shadow: 0 0 30px rgba($primary-color, 0.35);
+  margin-bottom: 1.2rem;
+}
+
+.countdown-screen-meta {
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  color: rgba($light-color, 0.9);
+  font-weight: 600;
+}
+
+.countdown-screen-meta-small {
+  margin-top: 0.8rem;
+  font-size: 0.95rem;
+  color: rgba($light-color, 0.7);
+}
+
 /* Radio button styles */
 .radio-group {
   display: flex;
@@ -513,6 +623,14 @@ body {
     tbody td {
       padding: 1rem;
     }
+  }
+
+  .attendance-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .countdown-screen {
+    min-height: min(65vh, 620px);
   }
 }
 
