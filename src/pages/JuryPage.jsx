@@ -176,20 +176,6 @@ export default function JuryPage() {
                   />
                   <span>✗ Sorry, I cannot attend</span>
                 </label>
-
-                {/* Maybe Option */}
-                <label
-                  className={`radio-option ${status === 'maybe' ? 'selected' : ''}`}
-                >
-                  <input
-                    type="radio"
-                    name="status"
-                    value="maybe"
-                    checked={status === 'maybe'}
-                    onChange={(e) => setStatus(e.target.value)}
-                  />
-                  <span>? Maybe, I'm not sure yet</span>
-                </label>
               </div>
             </div>
 
