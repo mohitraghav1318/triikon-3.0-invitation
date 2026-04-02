@@ -495,17 +495,10 @@ export const addTeamResponse = async (response) => {
 };
 
 export const submitTeamResponse = async (response) => {
-  const teamIdNormalized = normalizeTeamId(response?.teamId);
-
-  if (!teamIdNormalized) {
-    throw new Error('Please enter a valid team ID.');
-  }
-
-  // Team IDs and team names are intentionally not treated as unique here.
+  // Team names are intentionally not treated as unique here.
   // Multiple members from the same team are allowed to submit separately.
   const savedResponse = await addTeamResponse({
     ...response,
-    teamIdNormalized,
   });
 
   return savedResponse;

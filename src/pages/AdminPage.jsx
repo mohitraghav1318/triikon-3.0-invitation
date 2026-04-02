@@ -151,18 +151,16 @@ export default function AdminPage() {
   };
 
   const groupedTeamResponses = useMemo(() => {
-    // Group team responses by normalized Team ID so same-team records stay together.
+    // Group team responses by team name so same-team records stay together.
     return teamResponses.reduce((groups, response) => {
-      const normalizedTeamId =
-        response.teamIdNormalized ||
-        response.teamId?.trim().toLowerCase() ||
-        'unknown';
+      const teamNameKey =
+        response.teamName?.trim().toLowerCase() || 'unknown';
 
-      if (!groups[normalizedTeamId]) {
-        groups[normalizedTeamId] = [];
+      if (!groups[teamNameKey]) {
+        groups[teamNameKey] = [];
       }
 
-      groups[normalizedTeamId].push(response);
+      groups[teamNameKey].push(response);
       return groups;
     }, {});
   }, [teamResponses]);
@@ -446,19 +444,14 @@ export default function AdminPage() {
                   </p>
                 ) : (
                   Object.entries(groupedTeamResponses).map(
-                    ([normalizedTeamId, responses]) => {
-                      const displayTeamId =
-                        responses[0]?.teamId || normalizedTeamId;
+                    ([teamNameKey, responses]) => {
                       const displayTeamName = responses[0]?.teamName || '-';
 
                       return (
-                        <div key={normalizedTeamId} className="mb-8 last:mb-0">
+                        <div key={teamNameKey} className="mb-8 last:mb-0">
                           <h3 className="text-2xl font-bold text-primary mb-3">
-                            Team ID: {displayTeamId}
-                          </h3>
-                          <p className="text-light text-opacity-80 mb-4">
                             Team Name: {displayTeamName}
-                          </p>
+                          </h3>
 
                           <div className="overflow-x-auto">
                             <table className="response-table">

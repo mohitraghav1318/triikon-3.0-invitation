@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ThreeBackground from '../components/ThreeBackground';
 import { submitTeamResponse } from '../utils/storage';
 
 // We keep the target start time in one place so it is easy to update later.
 const HACKATHON_START_TIME = new Date('2026-04-04T09:00:00+05:30');
+const COUNTDOWN_MUSIC_PATH = '/music/countdown-theme.mp3';
 const SUBMIT_COOLDOWN_SECONDS = 10;
 
 // This helper converts milliseconds into a readable countdown string.
@@ -22,8 +23,9 @@ const formatCountdown = (remainingMs) => {
 };
 
 export default function HomePage() {
+  const countdownAudioRef = useRef(null);
+
   // Form state: each input has its own value for easier beginner understanding.
-  const [teamId, setTeamId] = useState('');
   const [teamName, setTeamName] = useState('');
   const [memberName, setMemberName] = useState('');
   const [attendance, setAttendance] = useState('');
@@ -33,6 +35,8 @@ export default function HomePage() {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitCooldownSeconds, setSubmitCooldownSeconds] = useState(0);
+  const [audioMessage, setAudioMessage] = useState('');
+  const [showPlayMusicButton, setShowPlayMusicButton] = useState(false);
 
   // Countdown state starts only after successful submit.
   const [remainingMs, setRemainingMs] = useState(0);
@@ -67,6 +71,47 @@ export default function HomePage() {
   }, [submitted]);
 
   useEffect(() => {
+    if (!submitted) {
+      return undefined;
+    }
+
+    const countdownAudio = countdownAudioRef.current;
+
+    if (!countdownAudio) {
+      return undefined;
+    }
+
+    let shouldIgnorePlaybackResult = false;
+
+    const attemptCountdownMusic = async () => {
+      try {
+        countdownAudio.currentTime = 0;
+        await countdownAudio.play();
+
+        if (!shouldIgnorePlaybackResult) {
+          setAudioMessage('');
+          setShowPlayMusicButton(false);
+        }
+      } catch {
+        if (!shouldIgnorePlaybackResult) {
+          setAudioMessage(
+            'Your browser blocked autoplay. Tap the button below to start the music.',
+          );
+          setShowPlayMusicButton(true);
+        }
+      }
+    };
+
+    attemptCountdownMusic();
+
+    return () => {
+      shouldIgnorePlaybackResult = true;
+      countdownAudio.pause();
+      countdownAudio.currentTime = 0;
+    };
+  }, [submitted]);
+
+  useEffect(() => {
     if (submitCooldownSeconds <= 0) {
       return undefined;
     }
@@ -88,11 +133,6 @@ export default function HomePage() {
     setError('');
 
     // Basic validations so users cannot submit empty data.
-    if (!teamId.trim()) {
-      setError('Please enter your team ID.');
-      return;
-    }
-
     if (!teamName.trim()) {
       setError('Please enter your team name.');
       return;
@@ -122,7 +162,6 @@ export default function HomePage() {
       // Team ID and team name are allowed to repeat so every member can submit.
       // The button cooldown is only here to slow accidental rapid re-clicks.
       await submitTeamResponse({
-        teamId: teamId.trim(),
         teamName: teamName.trim(),
         memberName: memberName.trim(),
         name: memberName.trim(),
@@ -133,7 +172,6 @@ export default function HomePage() {
 
       // Mark submit as successful and reset form fields.
       setSubmitted(true);
-      setTeamId('');
       setTeamName('');
       setMemberName('');
       setAttendance('');
@@ -146,9 +184,44 @@ export default function HomePage() {
     }
   };
 
+  const handleAudioError = () => {
+    setAudioMessage(
+      'See You At Trikon 3.0! Venue: Miet Auditorium 4, Time: 9:00 AM April 4, 2026.',
+    );
+    setShowPlayMusicButton(false);
+  };
+
+  const handlePlayMusic = async () => {
+    const countdownAudio = countdownAudioRef.current;
+
+    if (!countdownAudio) {
+      return;
+    }
+
+    try {
+      countdownAudio.currentTime = 0;
+      await countdownAudio.play();
+      setAudioMessage('');
+      setShowPlayMusicButton(false);
+    } catch {
+      setAudioMessage(
+        'Music could not start yet. Please try the button again.',
+      );
+      setShowPlayMusicButton(true);
+    }
+  };
+
   return (
     <div className="page-container">
       <ThreeBackground />
+      <audio
+        ref={countdownAudioRef}
+        src={COUNTDOWN_MUSIC_PATH}
+        preload="auto"
+        loop
+        hidden
+        onError={handleAudioError}
+      />
 
       <div className="relative z-10 container mx-auto px-4 py-8 max-w-5xl">
         <div className="page-header">
@@ -161,10 +234,10 @@ export default function HomePage() {
             <div className="home-form-intro">
               <span className="home-chip">Home Page Form</span>
               <h2>Team Confirmation Form</h2>
-              <p>
-                Fill your team details below. Members from the same team can
-                submit with the same team ID and team name.
-              </p>
+                <p>
+                  Fill your team details below. Members from the same team can
+                  submit with the same team name.
+                </p>
             </div>
 
             {error && (
@@ -174,18 +247,6 @@ export default function HomePage() {
             )}
 
             <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label htmlFor="team-id">Team ID *</label>
-                <input
-                  id="team-id"
-                  type="text"
-                  value={teamId}
-                  onChange={(event) => setTeamId(event.target.value)}
-                  placeholder="Example: 020, 001, 204 (from your registration email)"
-                  required
-                />
-              </div>
-
               <div className="form-group">
                 <label htmlFor="team-name">Team Name *</label>
                 <input
@@ -259,7 +320,22 @@ export default function HomePage() {
             <p className="countdown-screen-meta">
               Hackathon starting time is 9:00 AM April 4, 2026.
             </p>
-            <p className="countdown-screen-meta-small"></p>
+            <p className="countdown-screen-meta-small">
+              See You At Trikon 3.0! Venue: Miet Auditorium 4, Time: 9:00 AM
+              April 4, 2026.
+            </p>
+            {audioMessage && (
+              <p className="countdown-audio-message">{audioMessage}</p>
+            )}
+            {showPlayMusicButton && (
+              <button
+                type="button"
+                className="btn btn-secondary mt-4"
+                onClick={handlePlayMusic}
+              >
+                Play Music
+              </button>
+            )}
           </div>
         )}
       </div>
